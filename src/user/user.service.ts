@@ -1,8 +1,8 @@
-// user.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -15,6 +15,7 @@ export class UserService {
 
   async createUser(user: User): Promise<User> {
     try {
+    user.password = await bcrypt.hash(user.password, 10);
       return await this.userRepository.save(user);
     } catch (error) {
       this.logger.error(`Error creating user: ${error.message}`, error.stack);
@@ -63,6 +64,9 @@ export class UserService {
       if (!userToUpdate) {
         return null;
       }
+      if (updatedUser.password) {
+        updatedUser.password = await bcrypt.hash(updatedUser.password, 10);
+      }
 
       Object.assign(userToUpdate, updatedUser);
 
@@ -77,7 +81,7 @@ export class UserService {
     try {
     const user = await this.userRepository.findOne({ where: { userid } });
 
-    if (!user || user.password !== password) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return null;
     }
 
